@@ -1,0 +1,167 @@
+import "react-native-url-polyfill/auto";
+import { AppState, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
+import { makeRedirectUri } from "expo-auth-session";
+import { createClient } from "@supabase/supabase-js";
+import { ProfileData, emptyData, Profile } from "../domain";
+
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const key = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+export const backendConfigured = !!url && !!key;
+const storage =
+  Platform.OS === "web"
+    ? AsyncStorage
+    : {
+        async getItem(name: string) {
+          const count = Number(await SecureStore.getItemAsync(`${name}-count`));
+          if (!Number.isInteger(count) || count < 1 || count > 100) return null;
+          const parts = await Promise.all(
+            Array.from({ length: count }, (_, i) =>
+              SecureStore.getItemAsync(`${name}-${i}`),
+            ),
+          );
+          return parts.some((p) => p === null) ? null : parts.join("");
+        },
+        async setItem(name: string, value: string) {
+          const old =
+            Number(await SecureStore.getItemAsync(`${name}-count`)) || 0;
+          const parts = value.match(/.{1,1800}/gs) || [];
+          for (let i = 0; i < parts.length; i++)
+            await SecureStore.setItemAsync(`${name}-${i}`, parts[i]);
+          await SecureStore.setItemAsync(`${name}-count`, String(parts.length));
+          for (let i = parts.length; i < old; i++)
+            await SecureStore.deleteItemAsync(`${name}-${i}`);
+        },
+        async removeItem(name: string) {
+          const count =
+            Number(await SecureStore.getItemAsync(`${name}-count`)) || 0;
+          for (let i = 0; i < Math.min(count, 100); i++)
+            await SecureStore.deleteItemAsync(`${name}-${i}`);
+          await SecureStore.deleteItemAsync(`${name}-count`);
+        },
+      };
+export const supabase = backendConfigured
+  ? createClient(url!, key!, {
+      auth: {
+        storage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: Platform.OS === "web",
+        flowType: "pkce",
+      },
+    })
+  : null;
+if (Platform.OS !== "web" && supabase)
+  AppState.addEventListener("change", (state) =>
+    state === "active"
+      ? supabase.auth.startAutoRefresh()
+      : supabase.auth.stopAutoRefresh(),
+  );
+WebBrowser.maybeCompleteAuthSession();
+
+export async function socialSignIn(provider: "google" | "apple") {
+  if (!supabase)
+    throw new Error(
+      "Account connection is not configured yet. You can explore with a demo profile.",
+    );
+  const redirectTo = makeRedirectUri({ scheme: "neem", path: "auth-callback" });
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo, skipBrowserRedirect: Platform.OS !== "web" },
+  });
+  if (error) throw error;
+  if (Platform.OS !== "web" && data.url) {
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type === "success") {
+      const code = new URL(result.url).searchParams.get("code");
+      if (!code)
+        throw new Error(
+          "Sign-in did not return a confirmation. Please try again.",
+        );
+      const resultSession = await supabase.auth.exchangeCodeForSession(code);
+      if (resultSession.error) throw resultSession.error;
+    }
+  }
+}
+export async function loadProfiles(): Promise<Profile[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,name,birth_date");
+  if (error) throw error;
+  return data.map((p) => ({ id: p.id, name: p.name, birthDate: p.birth_date }));
+}
+export async function loadProfileData(profileId: string): Promise<ProfileData> {
+  if (!supabase) throw new Error("Account connection is unavailable.");
+  const [records, tasks, profile] = await Promise.all([
+    supabase
+      .from("health_records")
+      .select("*")
+      .eq("profile_id", profileId)
+      .order("measured_at"),
+    supabase
+      .from("care_tasks")
+      .select("*")
+      .eq("profile_id", profileId)
+      .order("due_at"),
+    supabase
+      .from("profiles")
+      .select("preferences,bookmarks,read_progress")
+      .eq("id", profileId)
+      .single(),
+  ]);
+  for (const result of [records, tasks, profile])
+    if (result.error) throw result.error;
+  return {
+    readings: records.data!.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      value: r.value,
+      secondary: r.secondary ?? undefined,
+      height: r.height ?? undefined,
+      at: r.measured_at,
+      context: r.context,
+      source: r.source,
+    })),
+    tasks: tasks.data!.map((t) => ({
+      id: t.id,
+      title: t.title,
+      dueAt: t.due_at,
+      completedAt: t.completed_at ?? undefined,
+    })),
+    bookmarks: profile.data!.bookmarks ?? [],
+    readProgress: profile.data!.read_progress ?? {},
+    preferences: { ...emptyData().preferences, ...profile.data!.preferences },
+  };
+}
+export async function saveProfileChange(
+  profileId: string,
+  next: ProfileData,
+  previous: ProfileData,
+) {
+  if (!supabase) throw new Error("Account connection is unavailable.");
+  // An authenticated, transactional RPC verifies membership and writes only changed rows.
+  // Real health records never enter the browser/demo persistence store.
+  const changedReadings = next.readings.filter(
+    (r) => !previous.readings.some((p) => p.id === r.id),
+  );
+  const changedTasks = next.tasks.filter(
+    (t) =>
+      JSON.stringify(previous.tasks.find((p) => p.id === t.id)) !==
+      JSON.stringify(t),
+  );
+  const { error } = await supabase.rpc("save_profile_changes", {
+    target_profile: profileId,
+    records: changedReadings,
+    tasks: changedTasks,
+    prefs: next.preferences,
+    saved: next.bookmarks,
+    progress: next.readProgress,
+  });
+  if (error)
+    throw new Error(
+      "Your changes could not be saved. Check your connection and try again.",
+    );
+}

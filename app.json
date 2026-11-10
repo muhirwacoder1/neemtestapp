@@ -1,25 +1,83 @@
 {
   "expo": {
-    "name": "neem-mobile",
-    "slug": "neem-mobile",
+    "name": "Neem",
+    "slug": "neem-health",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "health.neem.insole",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow Neem to use your camera during a video consultation.",
+        "NSMicrophoneUsageDescription": "Allow Neem to use your microphone during a video consultation."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#173F61",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "health.neem.insole",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACTIVITY_RECOGNITION"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-sharing",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "bluetoothAlwaysPermission": "Allow Neem to connect to your smart insoles and read supported sensor measurements."
+        }
+      ],
+      "expo-notifications",
+      "expo-router",
+      "expo-splash-screen",
+      "@clerk/expo",
+      "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Neem to choose a photo for your account.",
+          "cameraPermission": "Allow Neem to use your camera during a video consultation.",
+          "microphonePermission": "Allow Neem to use your microphone during a video consultation."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Neem to count your steps using your phone\u2019s motion sensor."
+        }
+      ]
+    ],
+    "scheme": "neem",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "aaeee1f2-2deb-4270-a45a-2fee291b8bc6"
+      }
+    },
+    "owner": "debo_week1"
   }
 }

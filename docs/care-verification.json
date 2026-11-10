@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-22",
+  "checks": {
+    "lint": "passed",
+    "typecheck": "passed",
+    "tests": {
+      "passed": 90,
+      "careTests": 12
+    },
+    "webExport": "passed",
+    "iosHermesExport": "passed",
+    "androidHermesExport": "passed",
+    "browserAdminAccess": "verified for the approved Clerk account",
+    "browserClinicianAccess": "administrator-only account denied",
+    "browserPatientSearch": "verified",
+    "browserPatientInvoices": "verified",
+    "browserDirectLinkRefresh": "verified",
+    "mobileWebFrame": {
+      "width": 390,
+      "height": 844,
+      "bodyScrollWidth": 390
+    },
+    "pawapayReadOnlyCheck": {
+      "merchant": "NEEM COMPANY LIMITED",
+      "providers": [
+        "AIRTEL_RWA",
+        "MTN_MOMO_RWA"
+      ],
+      "currency": "RWF",
+      "passed": true
+    },
+    "temporaryTokenFileRemoved": true
+  },
+  "limitations": [
+    "Current Clerk and Convex application instances are development instances.",
+    "No real mobile-money deposit was initiated.",
+    "No clinician identity or credentials have been supplied; none were invented.",
+    "Native exports have not been installed or tested on a physical device.",
+    "Ulcer risk is clinician-assessed; the pressure simulation is excluded."
+  ]
+}

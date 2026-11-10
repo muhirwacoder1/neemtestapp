@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792601559798,
+      "tag": "0000_neem_ai_threads",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792603140565,
+      "tag": "0001_health_readings_and_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792603581826,
+      "tag": "0002_knowledge_library",
+      "breakpoints": true
+    }
+  ]
+}

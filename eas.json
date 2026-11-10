@@ -1,0 +1,19 @@
+{
+  "cli": { "version": ">= 16.0.0" },
+  "build": {
+    "development": { "developmentClient": true, "distribution": "internal" },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "env": {
+        "NODE_OPTIONS": "--max-old-space-size=2048",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=\"-XX:MaxMetaspaceSize=1g -Xmx4g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8\" -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=2 -Dorg.gradle.daemon=false"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease --max-workers=2 --no-parallel --stacktrace"
+      }
+    },
+    "production": { "autoIncrement": true }
+  }
+}
